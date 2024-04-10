@@ -25,7 +25,7 @@ def graph_to_csv(G, id, type = "random", folder = GRAPH_FOLDER):
     df = pd.DataFrame({'node1':node1, 'node2': node2})
     df.to_csv(f"{folder}/{type}_{id}.csv", header=False, index=False)
 
-def graph_from_csv(file, folder = GRAPH_FOLDER):
+def graph_from_csv(file, folder = GRAPH_FOLDER, get_pos = True):
     """
     Function for reading graph data from a .csv file
     :param file: relative path to file from base folder
@@ -45,15 +45,16 @@ def graph_from_csv(file, folder = GRAPH_FOLDER):
     attrs_g = {'id': id, 'type': type}
     g.graph.update(attrs_g)
     # get pos data
-    pos_df = pd.read_csv("../data/positions/final_pos.csv",sep=';')
-    algorithm = pos_df[pos_df['id']==id]['algorithm']
-    pos_dict = pos_df[pos_df['id']==id]['pos_dict']
-    if len(algorithm) > 0:
-        g.graph['algorithm'] = algorithm.iloc[0]
-    if len(pos_dict) > 0:
-        pos_dict = eval(pos_dict.values[0])
-        for node in pos_dict.keys():
-            g.nodes[node]['pos'] = pos_dict[node]
+    if get_pos:
+        pos_df = pd.read_csv("../data/positions/final_pos.csv",sep=';')
+        algorithm = pos_df[pos_df['id']==id]['algorithm']
+        pos_dict = pos_df[pos_df['id']==id]['pos_dict']
+        if len(algorithm) > 0:
+            g.graph['algorithm'] = algorithm.iloc[0]
+        if len(pos_dict) > 0:
+            pos_dict = eval(pos_dict.values[0])
+            for node in pos_dict.keys():
+                g.nodes[node]['pos'] = pos_dict[node]
     return g
 
 def get_last_id(folder = GRAPH_FOLDER):
@@ -66,45 +67,45 @@ def get_last_id(folder = GRAPH_FOLDER):
            max_id = id
     return max_id
 
-def read_all_graphs(folder=GRAPH_FOLDER):
+def read_all_graphs(folder=GRAPH_FOLDER, get_pos = True):
     """Reads all the graphs from the folder into a list"""
     graph_files = os.listdir(folder)
     graphs = []
     for file in graph_files:
-        g = graph_from_csv(file)
+        g = graph_from_csv(file, get_pos= get_pos)
         graphs.append(g)
     return graphs
 
-def read_all_star_graphs(folder=GRAPH_FOLDER):
+def read_all_star_graphs(folder=GRAPH_FOLDER, get_pos = True):
     """Reads all the star graphs from the folder into a list"""
     star_files = re.compile(r'^star_')
     graph_files = os.listdir(folder)
     graphs = []
     for file in graph_files:
         if star_files.search(file):
-            g = graph_from_csv(file)
+            g = graph_from_csv(file, get_pos= get_pos)
             graphs.append(g)
     return graphs
 
-def read_all_grid_graphs(folder=GRAPH_FOLDER):
+def read_all_grid_graphs(folder=GRAPH_FOLDER, get_pos = True):
     """Reads all the grid graphs from the folder into a list"""
     grid_files = re.compile(r'^grid_')
     graph_files = os.listdir(folder)
     graphs = []
     for file in graph_files:
         if grid_files.search(file):
-            g = graph_from_csv(file)
+            g = graph_from_csv(file, get_pos= get_pos)
             graphs.append(g)
     return graphs
 
-def read_all_random_graphs(folder=GRAPH_FOLDER):
+def read_all_random_graphs(folder=GRAPH_FOLDER, get_pos = True):
     """Reads all the random graphs from the folder into a list"""
     random_files = re.compile(r'^random_')
     graph_files = os.listdir(folder)
     graphs = []
     for file in graph_files:
         if random_files.search(file):
-            g = graph_from_csv(file)
+            g = graph_from_csv(file, get_pos= get_pos)
             graphs.append(g)
     return graphs
 
@@ -124,7 +125,7 @@ def generate_random_graphs(num, min_node = 50, max_nodes = 500, old_graphs = Non
         graphs = old_graphs
 
     # edge ratios
-    edge_ratios = np.random.beta(2, 2, num)
+    edge_ratios = np.random.beta(2, 5, num)
     idx = 0
     new_graphs = []
     while len(new_graphs) < num:
@@ -147,7 +148,7 @@ def generate_star_graphs(num, min_nodes = 5, max_nodes = 100, old_graphs = None)
     :param old_graphs: previous graphs, so they don't have to parsed again
     :returns new_graphs: a list of the generated graphs"""
     # read the previuous graphs for checking isomorphism
-    last_id = 899#get_last_id()
+    last_id = get_last_id()
     if old_graphs == None:
         graphs = read_all_graphs()
     else:
@@ -225,7 +226,7 @@ def generate_graphs(num_random = 900, num_star = 50, num_grid= 50):
     for graph in star_graphs:
         if graph.number_of_nodes() > max_node:
             max_node = graph.number_of_nodes()
-    star_graphs = generate_star_graphs(num_star, min_size=max(5,max_node), old_graphs = graphs + random_graphs)
+    star_graphs = generate_star_graphs(num_star, min_nodes=max(5,max_node), old_graphs = graphs + random_graphs)
     print("Generating star graphs finished!")
     grid_graphs = generate_grid_graphs(num_grid, old_graphs = graphs + random_graphs + star_graphs)
     print("Generating grid graphs finished!")

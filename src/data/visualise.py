@@ -1,3 +1,4 @@
+from itertools import combinations
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -42,15 +43,16 @@ def final_pos_to_csv(g, folder = POS_FOLDER):
     pos_df = pd.concat([pos_df, new_pos.to_frame().T], ignore_index=True)
     pos_df.to_csv(f"{folder}/final_pos.csv",index=False, sep=";")
 
-def visualise(g, figsize = (8,8)):
+def visualise(g, figsize = (8,8), file = None):
     """Visualises the graph
     :param g: the graph"""
     # get positional data
     pos = {node: g.nodes[node]['pos'] for node in g.nodes}
     fig = plt.figure(figsize=figsize)
     # illustrate graph 
-    nx.draw(g, pos=pos,node_color = 'green',
-            node_size = 100)
+    nx.draw(g, pos=pos,node_size = 200, ax = plt.gca())
+    if file:
+        plt.savefig(file)
     plt.show()
 
 def add_final_pos(G, algorithm, positions):
@@ -60,6 +62,10 @@ def add_final_pos(G, algorithm, positions):
     final_pos_to_csv(G)
     return G
     
+def calculate_fr(G):
+    pos = fruchterman_reingold(G)
+    add_final_pos(G, "spring", pos)
+
 
 def fruchterman_reingold(
     G, k=None, pos=None, center=None, iterations=1000, threshold=1e-4, dim=2, seed=7
@@ -181,5 +187,71 @@ def fruchterman_reingold(
     type = G.graph['type']
     pos_df = pd.DataFrame({"positions":pos_list,"elapsed_time": elapsed_time_list})
     pos_df.to_csv(f"{POS_FOLDER}/{type}_{id}.csv", index=False)
-    return pos
+    return pos, G
+
+
+def calculate_edge_length_stats(G):
+    edge_lengths = []
+    for n1, n2 in G.edges:
+        x1, y1 = G.nodes[n1]['pos']
+        x2, y2 = G.nodes[n1]['pos']
+        edge_length = np.sqrt((x1-x2)*(x1-x2) +  (y1-y2)*(y1-y2))
+        edge_lengths.append(edge_length)
+    
+    return {'min': min(edge_lengths),
+            'max': max(edge_lengths),
+            'avg': sum(edge_lengths)/len(edge_lengths),
+            'std': np.std(edge_lengths)}
+    
+
+def orientation(p,q,r):
+    px, py = p
+    qx, qy = q
+    rx, ry = r
+    val = (qx - px) * (ry - py) - (qy - py) * (rx - px)
+
+    return 1 if val > 0 else -1
+
+def on_segment(p, q, r):
+    if q[0] <= max(p[0], r[0]) and q[0] >= min(p[0], r[0]) and q[1] <= max(p[1], r[1]) and q[1] >= min(p[1], r[1]):
+        return True
+    return False
+
+def check_intersect(v1, v2):
+    p1, p2 = v1
+    q1, q2 = v2
+
+    o1 = orientation(p1, p2, q1)
+    o2 = orientation(p1, p2, q2)
+    o3 = orientation(q1, q2, p1)
+    o4 = orientation(q1, q2, p2)
+
+    # vectors endpoints on different sides of other vector
+    if o1 != o2 and o3 != o4:
+        return True
+
+    if o1 == 0 and on_segment(p1, q1, p2):
+        return True
+
+    if o2 == 0 and on_segment(p1, q2, p2):
+        return True
+
+    if o3 == 0 and on_segment(q1, p1, q2):
+        return True
+
+    if o4 == 0 and on_segment(q1, p2, q2):
+        return True
+
+    return False
+     
+
+
+
+def calculate_num_inersections(G):
+    num_intersections = 0
+    for e1, e2 in combinations(G.edges, 2):
+        if check_intersect(e1, e2):
+            num_intersections = num_intersections + 1
+    
+    return num_intersections
 
