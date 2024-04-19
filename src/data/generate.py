@@ -69,11 +69,13 @@ def get_last_id(folder = GRAPH_FOLDER):
 
 def read_all_graphs(folder=GRAPH_FOLDER, get_pos = True):
     """Reads all the graphs from the folder into a list"""
-    graph_files = os.listdir(folder)
+    graph_files = re.compile(r'^(star_|random_|grid_)')
+    files = os.listdir(folder)
     graphs = []
-    for file in graph_files:
-        g = graph_from_csv(file, get_pos= get_pos)
-        graphs.append(g)
+    for file in files:
+        if graph_files.search(file):
+            g = graph_from_csv(file, get_pos= get_pos)
+            graphs.append(g)
     return graphs
 
 def read_all_star_graphs(folder=GRAPH_FOLDER, get_pos = True):
@@ -125,7 +127,7 @@ def generate_random_graphs(num, min_node = 50, max_nodes = 500, old_graphs = Non
         graphs = old_graphs
 
     # edge ratios
-    edge_ratios = np.random.beta(2, 5, num)
+    edge_ratios = np.random.beta(2, 1000, num)
     idx = 0
     new_graphs = []
     while len(new_graphs) < num:
